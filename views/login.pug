@@ -1,0 +1,31 @@
+doctype html
+html
+  head
+    title Login
+    link(rel='stylesheet', href='https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.3/css/bulma.min.css')
+    style.
+      .card {
+        width: 500px;
+        margin: auto;
+      }
+      .title, .login-button {
+        text-align: center;
+      }
+  body
+    section.section
+      div.container
+        div.card
+          div.card-content
+            h1.title 登录
+            form(action='/login', method='POST')
+              div.field
+                label.label 用户名
+                div.control
+                  input.input(type='text', name='username', placeholder='用户名')
+              div.field
+                label.label 密码
+                div.control
+                  input.input(type='password', name='password', placeholder='密码')
+              div.field.login-button
+                div.control
+                  button.button.is-primary(type='submit') 登录
