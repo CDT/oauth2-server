@@ -41,17 +41,17 @@ passport.use(new LocalStrategy(
 ))
 
 // 3. authorization server
-let clients = [{ client_id: 'app1'}]
+let clients = [{ id: 'app1'}]
 oauth2server.serializeClient((client, done) => done(null, client.id))
 oauth2server.deserializeClient((id, done) => {
-  let client = clients.filter(client => client.id = id)[0]
+  let client = clients.filter(client => client.id == id)[0]
   return done(null, client)
 })
 
 
 // 4. routes
 // authorization for the app itself
-app.get('/', (_, res) => res.send('OAuth2 Server'))
+app.get('/', ensureLoggedIn(), (_, res) => res.send('<html><body>OAuth2 Server, <a href="/logout">Logout</a></body></html>'))
 app.get('/login', (_, res) => res.render('login', { error: null })) // TODO: error flash message
 app.post('/login', passport.authenticate('local', { successReturnToOrRedirect: '/', failureRedirect: '/login' }))
 app.get('/logout', (req, res, next) => {
