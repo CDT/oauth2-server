@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Authorize App</title>
+</head>
+<body>
+  <h1>Authorize App</h1>
+  <p>Do you want to allow this app to access your account?</p>
+  <form method="post" action="/oauth/authorize/decision">
+    <input type="hidden" name="transaction_id" value="{{transactionID}}">
+    <input type="hidden" name="client_id" value="{{clientID}}">
+    <input type="hidden" name="redirect_uri" value="{{redirectURI}}">
+    <label><input type="radio" name="decision" value="allow"> Allow</label>
+    <label><input type="radio" name="decision" value="deny"> Deny</label>
+    <br>
+    <input type="submit" value="Submit">
+  </form>
+</body>
+</html>
