@@ -8,6 +8,9 @@
     "express-session": "^1.17.3",
     "oauth2orize": "^1.11.1",
     "passport": "^0.6.0",
-    "passport-local": "^1.0.0"
+    "passport-http": "^0.3.0",
+    "passport-http-bearer": "^1.0.1",
+    "passport-local": "^1.0.0",
+    "uuid": "^9.0.0"
   }
 }
