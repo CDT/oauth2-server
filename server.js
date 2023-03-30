@@ -4,8 +4,9 @@ const bodyParser = require('body-parser')
 const LocalStrategy = require('passport-local').Strategy
 const BasicStrategy = require('passport-http').BasicStrategy
 const BearerStrategy = require('passport-http-bearer').Strategy
-const errorHandler = require('errorhandler')
 const session = require('express-session')
+const MemoryStore = require('memorystore')(session)
+const errorHandler = require('errorhandler')
 const passport = require('passport')
 const ensureLoggedIn = require('connect-ensure-login').ensureLoggedIn
 const oauth2orize = require('oauth2orize')
@@ -20,7 +21,15 @@ app.use(cookieParser())
 app.use(bodyParser.json({ extended: false }))
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(errorHandler())
-app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: false }))
+const store = new MemoryStore({
+  checkPeriod: 86400000 // prune expired entries every 24h
+})
+app.use(session({
+  secret: 'keyboard cat', 
+  store,
+  resave: false, 
+  saveUninitialized: false
+}))
 app.use(passport.initialize())
 app.use(passport.session())
 
@@ -28,8 +37,12 @@ app.use(passport.session())
 let users = [{ username: 'admin', password: 'password' }]
 
 // serialization/deserialization: 
-passport.serializeUser((user, done) =>  done(null, user.username))
-passport.deserializeUser((username, done) => { done(null, users.filter(user => user.username == username)[0]) })
+passport.serializeUser((user, done) => {
+  done(null, user.username)
+})
+passport.deserializeUser((username, done) => { 
+  done(null, users.filter(user => user.username == username)[0]) 
+})
 
 // local strategy:
 passport.use(new LocalStrategy(
@@ -174,6 +187,8 @@ app.post('/dialog/authorize/decision', decision)
 app.post('/oauth/token', exchangeToken)
 // api
 app.get('/api/userinfo', verifyToken)
+// others
+app.get('/sessions', (req, res) => store.all( (err, sessions) => res.json(sessions) ))
 
 // 5. start server
 const port = 3001
