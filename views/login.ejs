@@ -57,10 +57,11 @@
         <div style="color: red"><%= error %></div>
       <% } %>
       <form action="/login" method="POST">
+        <input type="hidden" name="redirect" value="<%= redirect %>">
         <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required>
+        <input type="text" id="username" name="username" value="admin" required>
         <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required>
+        <input type="password" id="password" name="password" value="password" required>
         <button type="submit">Submit</button>
       </form>
     </div>

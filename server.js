@@ -9,8 +9,9 @@ const MemoryStore = require('memorystore')(session)
 const errorHandler = require('errorhandler')
 const passport = require('passport')
 const ensureLoggedIn = require('connect-ensure-login').ensureLoggedIn
-const oauth2orize = require('oauth2orize')
+const oauth2orize = require('@poziworld/oauth2orize')
 const uuid = require('uuid').v4
+const flash = require('connect-flash')
 
 // 1. Express configuration
 const app = express()
@@ -24,12 +25,9 @@ app.use(errorHandler())
 const store = new MemoryStore({
   checkPeriod: 86400000 // prune expired entries every 24h
 })
-app.use(session({
-  secret: 'keyboard cat', 
-  store,
-  resave: false, 
-  saveUninitialized: false
-}))
+app.use(flash())
+
+app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: false, store }))
 app.use(passport.initialize())
 app.use(passport.session())
 
@@ -37,19 +35,22 @@ app.use(passport.session())
 let users = [{ username: 'admin', password: 'password' }]
 
 // serialization/deserialization: 
-passport.serializeUser((user, done) => {
-  done(null, user.username)
-})
-passport.deserializeUser((username, done) => { 
-  done(null, users.filter(user => user.username == username)[0]) 
+passport.serializeUser((user, done) =>  done(null, user.username))
+
+passport.deserializeUser((username, done) => {
+  let user = users.filter(user => user.username == username)[0]
+  if (!user) return done(new Error('no user found'), user)
+  done(null, user)
 })
 
 // local strategy:
-passport.use(new LocalStrategy(
-  (username, password, done) => {
+passport.use('local', new LocalStrategy(
+  { passReqToCallback: true },
+  (req, username, password, done) => {
     let user = users.filter(user => user.username == username && user.password == password)[0]
 
     if (!user) {
+      req.flash('error', 'Invalid username or password')
       return done(null, false)
     }
     return done(null, user)
@@ -81,7 +82,7 @@ passport.use(new BearerStrategy(
 // 3. authorization server
 // create server and init data: clients, tokens, auth codes, users
 const oauth2server = oauth2orize.createServer()
-const clients = [{ id: 'abc123', name: 'ToyApp', secret: 'secret'}]
+const clients = [{ id: 'abc123', name: 'ToyApp', secret: 'secret', redirectUris: ['http://localhost:3001/account']}]
 const accessTokens = []
 const refreshTokens = []
 const authCodes = []
@@ -127,7 +128,10 @@ oauth2server.exchange(oauth2orize.exchange.code((client, code, redirectUri, done
 // authorization handler
 let authorize = oauth2server.authorization((clientId, redirectUri, done) => {
   let client = clients.filter(client => client.id == clientId)[0]
-  // TODO: verifiy redirectUri
+  // Verify redirect URI
+  if (!client.redirectUris.includes(redirectUri)) {
+    return done(new Error('Invalid redirect URI'))
+  }
   return done(null, client, redirectUri);
 }, (client, user, done) => {
   let token = accessTokens.filter(token => token.userId == user.id && token.clientId == client.clientId)[0]
@@ -176,12 +180,22 @@ const verifyToken = [
 // 4. routes
 // authorization for the app itself
 app.get('/', ensureLoggedIn(), (_, res) => res.send('<html><body>OAuth2 Server, <a href="/logout">Logout</a></body></html>'))
-app.get('/login', (_, res) => res.render('login', { error: null })) // TODO: error flash message
-app.post('/login', passport.authenticate('local', { successReturnToOrRedirect: '/', failureRedirect: '/login' }))
+app.get('/login', (req, res) => res.render('login', { error: req.flash('error'), redirect: req.session.returnTo }))
+app.post('/login', passport.authenticate('local', 
+{ 
+  // successReturnToOrRedirect: '/', 
+  failureRedirect: '/login',
+  failureFlash: true
+}), (req, res) => {
+  if (req.body.redirect) {
+    return res.redirect(req.body.redirect)
+  } else {
+    return res.redirect('/')
+  }
+})
 app.get('/logout', logout)
 app.get('/account',  ensureLoggedIn(), (req, res) => res.send(`username: ${req.user.username}`))
 // authorization for 3rd party app
-// TODO: will not redirect back to /dialog/authorize after logging in, debug
 app.get('/dialog/authorize', ensureLoggedIn(), authorization)
 app.post('/dialog/authorize/decision', decision)
 app.post('/oauth/token', exchangeToken)
